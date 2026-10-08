@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>谁是卧底 · 角色抽取</title>
+<style>
+  :root{
+    --blue:#156082; --blue-d:#0e4760; --blue-l:#e8f1f6;
+    --orange:#E97132; --orange-d:#c2551c; --orange-l:#fdf0e7;
+    --ink:#1f2b33; --muted:#6b7b86; --line:#d7e2ea; --ok:#1f8a56;
+    --purple:#7b5ea7; --purple-l:#f0ecf7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    font-family:"FangSong","仿宋","STFangsong",serif;
+    background:linear-gradient(160deg,#f4f7fa 0%,#e6eef4 100%);
+    color:var(--ink);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;
+    padding:22px 16px calc(22px + env(safe-area-inset-bottom));
+  }
+  .num{font-family:"Times New Roman",Times,serif;}
+
+  .top{width:100%;max-width:540px;text-align:center;margin-bottom:16px;}
+  .top h1{font-size:25pt;letter-spacing:3px;font-weight:normal;color:var(--blue-d);margin-bottom:6px;}
+  .top p{font-size:13pt;color:var(--muted);line-height:1.5;}
+
+  .wrap{width:100%;max-width:540px;flex:1;display:flex;flex-direction:column;justify-content:center;}
+
+  .stage{
+    background:#fff;border-radius:22px;border:2px solid var(--line);
+    box-shadow:0 6px 22px rgba(31,43,51,.09);
+    padding:26px 22px;text-align:center;min-height:360px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  }
+
+  /* 座位选择宫格 */
+  .seats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;}
+  .seatsel{
+    aspect-ratio:1/1;border:2px solid var(--line);border-radius:14px;background:#fff;
+    cursor:pointer;font-family:"Times New Roman",serif;font-size:26pt;color:var(--blue-d);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    transition:all .13s;
+  }
+  .seatsel small{font-size:11pt;color:var(--muted);font-family:"FangSong","仿宋",serif;}
+  .seatsel:hover{border-color:var(--blue);background:var(--blue-l);}
+  .seatsel.done{border-color:#c9d2d9;background:#f4f6f8;color:#b8c2ca;cursor:not-allowed;}
+  .seatsel.done small{color:#c9d2d9;}
+
+  .prompt{font-size:15.5pt;color:var(--ink);line-height:1.6;}
+  .prompt b{color:var(--orange-d);}
+
+  /* 角色卡 */
+  .rolecard{width:100%;animation:pop .3s cubic-bezier(.2,.9,.3,1.2);}
+  @keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+  .rolecard .tag{font-size:15pt;color:var(--muted);margin-bottom:4px;}
+  .rolecard .seat{font-size:60pt;line-height:1;color:var(--blue-d);font-weight:bold;margin-bottom:14px;}
+  .rolecard .seat small{font-size:19pt;font-weight:normal;color:var(--muted);font-family:"FangSong","仿宋",serif;}
+  .wordbox{border:3px dashed var(--blue);border-radius:16px;padding:16px;background:var(--blue-l);margin-bottom:6px;}
+  .wordbox .wl{font-size:14pt;color:var(--muted);margin-bottom:6px;}
+  .wordbox .word{font-size:40pt;letter-spacing:5px;color:var(--blue-d);font-weight:bold;line-height:1.15;}
+  .identity{margin-top:14px;font-size:16pt;padding:9px 20px;border-radius:999px;display:inline-block;}
+  .identity.civ{background:#eaf3ec;color:var(--ok);border:2px solid #bfdcc7;}
+  .identity.spy{background:var(--orange-l);color:var(--orange-d);border:2px solid #f0c19c;}
+
+  .smallbtn{
+    border:2px solid var(--line);background:#fff;border-radius:12px;cursor:pointer;
+    font-family:inherit;font-size:15pt;color:var(--muted);padding:12px 20px;width:100%;transition:all .13s;
+  }
+  .smallbtn:hover{border-color:var(--blue);color:var(--blue-d);}
+  .rowbtns{display:flex;flex-direction:column;gap:11px;width:100%;}
+
+  .hint{font-size:13pt;color:var(--muted);line-height:1.7;text-align:left;background:#f4f8fb;border-radius:12px;padding:13px 16px;width:100%;}
+  .hint b{color:var(--blue-d);}
+
+  .foot{width:100%;max-width:540px;text-align:center;font-size:11.5pt;color:#9aa8b2;margin-top:16px;line-height:1.6;}
+  .warnline{font-size:13pt;color:var(--orange-d);min-height:18px;text-align:center;}
+</style>
+</head>
+<body>
+
+  <div class="top">
+    <h1>谁 是 卧 底</h1>
+    <p>人力资源管理前沿 · 第4章 HRBP · 8 人局</p>
+  </div>
+
+  <div class="wrap">
+    <div class="stage" id="stage"></div>
+  </div>
+
+  <div class="foot" id="foot">
+    你的词只有你自己能看到，请不要给别人看。<br>
+  </div>
+
+<script>
+/* ================= 配置区 ================= */
+const CONFIG = {
+  seats: 8,          // 总人数
+  spies: 2,          // 卧底人数
+  words: {
+    civilian: "招聘",   // 平民词
+    spyA: "面试",       // 卧底 A 的词
+    spyB: "猎头"        // 卧底 B 的词
+  }
+};
+/* ========================================== */
+
+/* -------- 本机已认领的座位（防重复点） -------- */
+const MINE_KEY = "wodi_mine_v1";
+function getMine(){ try{ return JSON.parse(localStorage.getItem(MINE_KEY)||"null"); }catch(e){ return null; } }
+function setMine(o){ localStorage.setItem(MINE_KEY, JSON.stringify(o)); }
+
+/* -------- 牌局：优先从 URL #deck= 读取，否则现场随机 -------- */
+/* 牌局编码格式： #deck=1:civ,2:spyA,3:civ,4:spyB,5:civ,6:civ,7:civ,8:civ
+   civ=平民 spyA/spyB=两种卧底词                                      */
+function parseDeck(){
+  const h = location.hash.replace(/^#/,"");
+  const params = new URLSearchParams(h);
+  const deckStr = params.get("deck");
+  if(!deckStr) return null;
+  const map = {};
+  deckStr.split(",").forEach(pair=>{
+    const [seat, type] = pair.split(":");
+    if(seat && type) map[+seat] = type;
+  });
+  return map;
+}
+
+function dealCards(){
+  const arr = [];
+  for(let i=1;i<=CONFIG.seats;i++) arr.push({seat:i, type:"civ"});
+  const idxs = [...Array(CONFIG.seats).keys()];
+  for(let i=idxs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [idxs[i],idxs[j]]=[idxs[j],idxs[i]]; }
+  const [a,b] = idxs;
+  arr[a].type = "spyA";
+  arr[b].type = "spyB";
+  return arr;
+}
+
+const DECK_MAP = parseDeck();          // 若非 null，说明是"一码一局"
+let CARDS = DECK_MAP
+  ? Object.keys(DECK_MAP).map(s=>({seat:+s, type:DECK_MAP[s]}))
+  : dealCards();
+
+function wordOf(type){
+  if(type==="spyA") return CONFIG.words.spyA;
+  if(type==="spyB") return CONFIG.words.spyB;
+  return CONFIG.words.civilian;
+}
+function isSpy(type){ return type==="spyA"||type==="spyB"; }
+
+const stage = document.getElementById("stage");
+
+/* -------- 已认领座位模拟（本机 + 同局他人由服务端无，故仅本机） -------- */
+function renderSeatSelect(){
+  const mine = getMine();
+  if(mine && mine.seat){
+    renderRole(mine.seat, mine.type);
+    return;
+  }
+  const cardsHtml = CARDS.map(c=>{
+    return `<div class="seatsel" data-seat="${c.seat}">${c.seat}<small>号</small></div>`;
+  }).join("");
+  stage.innerHTML = `
+    <div class="prompt">请点击 <b>你自己抽到的座位号</b><br>（点错无法重来，看清再点）</div>
+    <div class="seats">${cardsHtml}</div>
+    <div class="warnline" id="warn"></div>
+  `;
+  stage.querySelectorAll(".seatsel").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const seat = +el.dataset.seat;
+      const card = CARDS.find(c=>c.seat===seat);
+      if(!card) return;
+      // 二次确认，防误触
+      const w = document.getElementById("warn");
+      if(!el.classList.contains("confirm")){
+        stage.querySelectorAll(".seatsel").forEach(x=>{ x.classList.remove("confirm"); x.style.borderColor=""; x.style.background=""; });
+        el.classList.add("confirm");
+        el.style.borderColor = "#E97132";
+        el.style.background = "#fdf0e7";
+        w.textContent = `确认你是 ${seat} 号？再点一次确定。`;
+        return;
+      }
+      setMine({seat, type: card.type});
+      renderRole(seat, card.type);
+    });
+  });
+}
+
+function renderRole(seat, type){
+  const spy = isSpy(type);
+  stage.innerHTML = `
+    <div class="rolecard">
+      <div class="tag">你的座位号</div>
+      <div class="seat num">${seat}<small> 号</small></div>
+      <div class="wordbox">
+        <div class="wl">你的词是</div>
+        <div class="word">${wordOf(type)}</div>
+      </div>
+      <div class="identity ${spy?"spy":"civ"}">${spy?"你是【卧底】":"你是【平民】"}</div>
+    </div>
+    <div class="rowbtns">
+      <button class="smallbtn" id="btnHide">收 起（我看完了）</button>
+    </div>
+  `;
+  const b = document.getElementById("btnHide");
+  if(b) b.addEventListener("click", ()=>{
+    stage.innerHTML = `
+      <div class="hint" style="text-align:center;font-size:14pt;line-height:1.9;">
+        📌 你的角色已锁定：<b class="num">${seat}</b> 号<br>请记住你的词，不要给别人看。
+      </div>
+      <button class="smallbtn" id="btnShow">再 看 一 次 我 的 词</button>
+    `;
+    document.getElementById("btnShow").addEventListener("click", ()=>renderRole(seat, type));
+  });
+}
+
+/* -------- 老师端：生成牌局（仅当 URL 带 ?host=1 时显示） -------- */
+function renderHost(){
+  document.querySelector(".top h1").textContent = "卧底 · 老师控制台";
+  document.querySelector(".top p").textContent = "生成牌局 → 投屏二维码 → 学生扫码认领";
+  const cards = dealCards();
+  const deckStr = cards.map(c=>`${c.seat}:${c.type}`).join(",");
+  const base = location.origin + location.pathname;
+  const link = base + "#deck=" + deckStr;
+
+  stage.innerHTML = `
+    <div class="prompt" style="font-size:14.5pt;">本局牌面（<b>仅老师可见</b>）</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;font-size:12.5pt;">
+      ${cards.map(c=>`<div style="border:2px solid ${isSpy(c.type)?"#E97132":"#d7e2ea"};border-radius:10px;padding:8px 4px;background:${isSpy(c.type)?"#fdf0e7":"#f4f8fb"};">
+        <div class="num" style="font-size:18pt;color:#0e4760;">${c.seat}</div>
+        <div>${wordOf(c.type)}</div>
+        <div style="color:${isSpy(c.type)?"#c2551c":"#1f8a56"};font-size:11pt;">${isSpy(c.type)?"卧底":"平民"}</div>
+      </div>`).join("")}
+    </div>
+    <div style="width:100%;text-align:left;font-size:12pt;color:#6b7b86;word-break:break-all;background:#f4f8fb;border-radius:10px;padding:10px 12px;line-height:1.5;">
+      <b>学生链接：</b><br>${link}
+    </div>
+    <button class="smallbtn" id="btnCopy">复 制 学 生 链 接</button>
+    <button class="smallbtn" id="btnDeal">🎲 换 一 局 牌</button>
+  `;
+  document.getElementById("btnCopy").addEventListener("click", async ()=>{
+    try{ await navigator.clipboard.writeText(link); alert("已复制！把它生成二维码即可。"); }
+    catch(e){ prompt("手动复制：", link); }
+  });
+  document.getElementById("btnDeal").addEventListener("click", renderHost);
+}
+
+const isHost = new URLSearchParams(location.search).get("host") === "1" || location.hash.includes("host=1");
+if(isHost){ renderHost(); } else { renderSeatSelect(); }
+</script>
+</body>
+</html>

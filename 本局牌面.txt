@@ -1,3 +1,3 @@
-卧底(HRBP)座位: 7, 5
+卧底(HRBP)座位: 2, 8
 平民(COE): 其余6个座位
-链接: https://mingyuecressy.github.io/wodi-game/#deck=1:civ,2:civ,3:civ,4:civ,5:spy,6:civ,7:spy,8:civ
+链接: https://mingyuecressy.github.io/wodi-game/#deck=1:civ,2:spy,3:civ,4:civ,5:civ,6:civ,7:civ,8:spy

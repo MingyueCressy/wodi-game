@@ -1,3 +1,11 @@
-卧底(HRBP)座位: 2, 8
-平民(COE): 其余6个座位
-链接: https://mingyuecressy.github.io/wodi-game/#deck=1:civ,2:spy,3:civ,4:civ,5:civ,6:civ,7:civ,8:spy
+本局牌面：
+1号: COE(平民)
+2号: HRBP(卧底)
+3号: COE(平民)
+4号: COE(平民)
+5号: HRBP(卧底)
+6号: COE(平民)
+7号: COE(平民)
+8号: COE(平民)
+卧底座位: [2, 5]
+链接: https://mingyuecressy.github.io/wodi-game/#deck=1:civ,2:spy,3:civ,4:civ,5:spy,6:civ,7:civ,8:civ

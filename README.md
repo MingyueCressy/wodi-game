@@ -7,7 +7,7 @@
 - **学生端**：扫码 → 点击自己抽到的座位号 → 私密显示「座位号 + 词语 + 平民/卧底」
 
 ## 一码一局
-学生链接形如 `index.html#deck=1:civ,2:spyA,...`，牌局编码在 URL 里，8 台手机读同一副牌，避免各抽各的导致卧底数量出错。
+学生链接形如 `index.html#deck=1:civ,2:spy,...`，牌局编码在 URL 里，8 台手机读同一副牌，避免各抽各的导致卧底数量出错。其中 `civ`=平民（COE，6 人），`spy`=卧底（HRBP，2 人）。
 
 ## 改词
-编辑 `index.html` 顶部 `CONFIG.words`：`civilian` 平民词 / `spyA`、`spyB` 两个卧底词。
+编辑 `index.html` 顶部 `CONFIG.words`：`civilian` 平民词(COE) / `spy` 卧底词(HRBP)。

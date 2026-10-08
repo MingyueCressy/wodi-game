@@ -99,9 +99,8 @@ const CONFIG = {
   seats: 8,          // 总人数
   spies: 2,          // 卧底人数
   words: {
-    civilian: "招聘",   // 平民词
-    spyA: "面试",       // 卧底 A 的词
-    spyB: "猎头"        // 卧底 B 的词
+    civilian: "COE",    // 平民词（6 人持有）
+    spy: "HRBP"         // 卧底词（2 人持有）
   }
 };
 /* ========================================== */
@@ -112,8 +111,7 @@ function getMine(){ try{ return JSON.parse(localStorage.getItem(MINE_KEY)||"null
 function setMine(o){ localStorage.setItem(MINE_KEY, JSON.stringify(o)); }
 
 /* -------- 牌局：优先从 URL #deck= 读取，否则现场随机 -------- */
-/* 牌局编码格式： #deck=1:civ,2:spyA,3:civ,4:spyB,5:civ,6:civ,7:civ,8:civ
-   civ=平民 spyA/spyB=两种卧底词                                      */
+/* 牌局编码格式： #deck=1:civ,2:spy,3:civ,...   civ=平民(COE) spy=卧底(HRBP) */
 function parseDeck(){
   const h = location.hash.replace(/^#/,"");
   const params = new URLSearchParams(h);
@@ -132,9 +130,9 @@ function dealCards(){
   for(let i=1;i<=CONFIG.seats;i++) arr.push({seat:i, type:"civ"});
   const idxs = [...Array(CONFIG.seats).keys()];
   for(let i=idxs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [idxs[i],idxs[j]]=[idxs[j],idxs[i]]; }
-  const [a,b] = idxs;
-  arr[a].type = "spyA";
-  arr[b].type = "spyB";
+  // 前 CONFIG.spies 个位置设为卧底
+  const spyCount = CONFIG.spies;
+  for(let k=0;k<spyCount;k++){ arr[idxs[k]].type = "spy"; }
   return arr;
 }
 
@@ -144,11 +142,10 @@ let CARDS = DECK_MAP
   : dealCards();
 
 function wordOf(type){
-  if(type==="spyA") return CONFIG.words.spyA;
-  if(type==="spyB") return CONFIG.words.spyB;
+  if(type==="spy") return CONFIG.words.spy;
   return CONFIG.words.civilian;
 }
-function isSpy(type){ return type==="spyA"||type==="spyB"; }
+function isSpy(type){ return type==="spy"; }
 
 const stage = document.getElementById("stage");
 

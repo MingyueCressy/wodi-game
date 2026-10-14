@@ -292,14 +292,15 @@ function renderIdentity(){
   });
 }
 
-/* 3. 玩家 → 跳转选角色（新开页，保留名字） */
+/* 3. 玩家 → 跳转选角色（带上名字学号，供结算用） */
 function renderPlayer(){
-  const url = "https://mingyuecressy.github.io/wodi-game/";
+  const q = "?name=" + encodeURIComponent(ST.name) + "&sid=" + encodeURIComponent(ST.sid);
+  const url = "https://mingyuecressy.github.io/wodi-game/" + q;
   stage.innerHTML = `
     <div class="prompt">正在为你跳转到角色抽取页…</div>
     <div class="hint">
       玩家不需要投票。请在打开的页面中点击 <b>你自己的座位号</b>，查看你的词与身份。<br><br>
-      如果没有自动跳转，请点击下方按钮。
+      游戏结束后，可在该页结算你的积分。若没有自动跳转，请点击下方按钮。
     </div>
     <button class="btnbig orange" id="btnGo">前 往 抽 取 角 色</button>
   `;

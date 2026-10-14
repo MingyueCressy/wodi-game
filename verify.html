@@ -126,24 +126,28 @@ function checksum(name, sid, score){
 }
 /* ============================================ */
 
-/* 解析一行："姓名 学号 23分 ★7F3A" （宽松） */
+/* 解析一行，兼容两种格式：
+   观众： 杜明明 2024010101 23分 ★7F3A
+   玩家： 杜明明 2024010101 作为卧底·胜利 获得20积分 ★SVJVEF  */
 function parseLine(line){
   const raw = line.trim();
   if(!raw) return null;
-  // 提取校验码
+  // 提取校验码（★/＊后的 6 位字母数字）
   const codeM = raw.match(/[★*]\s*([A-Za-z0-9]{4,10})\s*$/);
   const code = codeM ? codeM[1].toUpperCase() : null;
   let rest = raw;
   if(codeM) rest = raw.slice(0, codeM.index);
-  // 提取分数：数字 + 分
-  const scoreM = rest.match(/(\d+)\s*分/);
+  // 提取分数：优先 "XX积分"，其次 "XX分"
+  const scoreM = rest.match(/(\d+)\s*(?:积分|分)/);
   const score = scoreM ? parseInt(scoreM[1],10) : null;
   if(scoreM) rest = rest.replace(scoreM[0], " ");
-  // 剩余：姓名 学号
-  const parts = rest.trim().split(/\s+/).filter(Boolean);
-  let name="", sid="";
-  if(parts.length>=2){ sid = parts[parts.length-1]; name = parts.slice(0,parts.length-1).join(""); }
-  else if(parts.length===1){ name = parts[0]; }
+  // 提取学号：从左往右第一个长度≥6的纯数字串
+  let sid = "";
+  const sidM = rest.match(/\b(\d{6,})\b/);
+  if(sidM){ sid = sidM[1]; rest = rest.replace(sidM[0], " "); }
+  // 姓名：剩余里的中文/字母片段，取非空白的第一段
+  const nameM = rest.replace(/[·.。、,，]/g," ").match(/[\u4e00-\u9fa5A-Za-z]+/);
+  const name = nameM ? nameM[0] : "";
   return { raw, name, sid, score, code };
 }
 

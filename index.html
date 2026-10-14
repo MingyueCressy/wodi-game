@@ -101,9 +101,69 @@ const CONFIG = {
   words: {
     civilian: "COE",    // 平民词（6 人持有）
     spy: "HRBP"         // 卧底词（2 人持有）
-  }
+  },
+  // ==== 玩家结算得分 ====
+  playerScore: {
+    civilian: { win: 15, lose: 10 },   // 平民：获胜15 / 失败10
+    spy:      { win: 20, lose: 10 }    // 卧底：获胜20 / 失败10
+  },
+  // 校验码密钥（须与投票页/核验页一致）
+  SECRET: "WodiHRBP#2026@Cressy$Mingyue%7749"
 };
 /* ========================================== */
+
+/* ---------- 校验码（与投票页/核验页同一套算法，6位） ---------- */
+const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function hashCode(str){
+  let h1 = 0x811c9dc5, h2 = 0x1000193;
+  for(let i=0;i<str.length;i++){
+    const c = str.charCodeAt(i);
+    h1 ^= c; h1 = Math.imul(h1, 0x01000193);
+    h2 = Math.imul(h2 ^ c, 0x85ebca6b);
+    h2 ^= h2 >>> 13;
+  }
+  for(let r=0;r<8;r++){
+    h1 ^= Math.imul(h1 >>> 7, 0x9e3779b1);
+    h2 ^= Math.imul(h2 >>> 11, 0xc2b2ae35);
+    h1 = (h1 << 13) | (h1 >>> 19);
+    h2 = (h2 << 17) | (h2 >>> 15);
+    h1 = Math.imul(h1 ^ h2, 0x27d4eb2f);
+    h2 = Math.imul(h2 ^ h1, 0x165667b1);
+  }
+  return [h1>>>0, h2>>>0];
+}
+function checksum(name, sid, score){
+  const seed = CONFIG.SECRET + "|" + name.trim() + "|" + String(sid).trim() + "|" + score;
+  const [a,b] = hashCode(seed);
+  let out = "", x = a, y = b;
+  for(let i=0;i<6;i++){
+    x = Math.imul(x ^ (y >>> (i+1)), 0x9e3779b1) >>> 0;
+    y = Math.imul(y ^ (x >>> (i+2)), 0x85ebca6b) >>> 0;
+    out += ALPHABET[((x ^ y) >>> 0) % ALPHABET.length];
+  }
+  return out;
+}
+
+/* -------- 玩家信息（名字+学号）本机存储 -------- */
+const ME_KEY = "wodi_me_v1";
+function getMe(){ try{ return JSON.parse(localStorage.getItem(ME_KEY)||"null"); }catch(e){ return null; } }
+function setMe(o){ localStorage.setItem(ME_KEY, JSON.stringify(o)); }
+/* 从 URL 参数补全名字（投票入口跳转时带上 ?name=&sid=） */
+(function absorbUrlName(){
+  const q = new URLSearchParams(location.search);
+  const n = q.get("name"), s = q.get("sid");
+  if(n && s && (!getMe() || !getMe().name)) setMe({name:n, sid:s});
+})();
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(msg, ms=1600){
+  let t = document.getElementById("_toast");
+  if(!t){ t=document.createElement("div"); t.id="_toast";
+    t.style.cssText="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);background:rgba(31,43,51,.92);color:#fff;padding:14px 22px;border-radius:12px;font-size:14pt;opacity:0;pointer-events:none;transition:all .2s;z-index:99;max-width:80%;text-align:center;line-height:1.5;";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity="1"; t.style.transform="translate(-50%,-50%) scale(1)";
+  clearTimeout(t._h); t._h = setTimeout(()=>{ t.style.opacity="0"; t.style.transform="translate(-50%,-50%) scale(.9)"; }, ms);
+}
 
 /* -------- 本机已认领的座位（防重复点） -------- */
 const MINE_KEY = "wodi_mine_v1";
@@ -151,6 +211,12 @@ const stage = document.getElementById("stage");
 
 /* -------- 已认领座位模拟（本机 + 同局他人由服务端无，故仅本机） -------- */
 function renderSeatSelect(){
+  // 先要求填名字（玩家结算要用）
+  const me = getMe();
+  if(!me || !me.name){
+    renderPlayerReg();
+    return;
+  }
   const mine = getMine();
   if(mine && mine.seat){
     renderRole(mine.seat, mine.type);
@@ -208,8 +274,88 @@ function renderRole(seat, type){
         📌 你的角色已锁定：<b class="num">${seat}</b> 号<br>请记住你的词，不要给别人看。
       </div>
       <button class="smallbtn" id="btnShow">再 看 一 次 我 的 词</button>
+      <button class="smallbtn" id="btnSettle" style="border-color:#E97132;color:#c2551c;">🏁 游戏结束 · 结算我的积分</button>
     `;
     document.getElementById("btnShow").addEventListener("click", ()=>renderRole(seat, type));
+    document.getElementById("btnSettle").addEventListener("click", ()=>renderPlayerSettle(seat, type));
+  });
+}
+
+/* -------- 玩家填名字（结算需要） -------- */
+function renderPlayerReg(){
+  stage.innerHTML = `
+    <div class="prompt">请先填写你的信息（用于发放积分）</div>
+    <label style="width:100%;text-align:left;font-size:13pt;color:#6b7b86;">姓名</label>
+    <input type="text" id="inName" placeholder="例如：杜明明" style="width:100%;border:2px solid #d7e2ea;border-radius:12px;padding:13px 15px;font-family:inherit;font-size:16pt;outline:none;">
+    <label style="width:100%;text-align:left;font-size:13pt;color:#6b7b86;">学号</label>
+    <input type="text" id="inSid" placeholder="例如：2024010101" style="width:100%;border:2px solid #d7e2ea;border-radius:12px;padding:13px 15px;font-family:inherit;font-size:16pt;outline:none;">
+    <div class="warnline" id="warn"></div>
+    <button class="smallbtn" id="btnNext">下 一 步 · 抽 取 角 色</button>
+  `;
+  document.getElementById("btnNext").addEventListener("click", ()=>{
+    const n = document.getElementById("inName").value.trim();
+    const s = document.getElementById("inSid").value.trim();
+    const w = document.getElementById("warn");
+    if(!n){ w.textContent = "请填写姓名。"; return; }
+    if(!s){ w.textContent = "请填写学号。"; return; }
+    setMe({name:n, sid:s});
+    renderSeatSelect();
+  });
+}
+
+/* -------- 玩家结算页（身份自动带出，只需选胜负） -------- */
+function renderPlayerSettle(seat, type){
+  const me = getMe() || {name:"", sid:""};
+  const isSpyRole = isSpy(type);
+  const roleName = isSpyRole ? "卧底" : "平民";
+  stage.innerHTML = `
+    <div class="prompt">🏁 游戏结束 · 结算</div>
+    <div style="width:100%;background:#f4f8fb;border-radius:12px;padding:14px;text-align:center;line-height:1.8;font-size:14pt;">
+      <b>${escapeHtml(me.name)}</b>（${escapeHtml(me.sid)}）<br>
+      你的身份：<b style="color:${isSpyRole?'#c2551c':'#1f8a56'}">${roleName}</b>
+    </div>
+    <div class="prompt" style="font-size:14pt;">本局结果：</div>
+    <div class="rowbtns">
+      <button class="smallbtn" id="btnWin" style="border-color:#1f8a56;color:#1f8a56;font-size:16pt;padding:15px;">🏆 我们赢了</button>
+      <button class="smallbtn" id="btnLose" style="border-color:#6b7b86;font-size:16pt;padding:15px;">😢 我们输了</button>
+    </div>
+    <div class="warnline">身份已自动识别，选择本局胜负即可。</div>
+    <button class="smallbtn" id="btnBack">返 回</button>
+  `;
+  document.getElementById("btnBack").addEventListener("click", ()=>renderRole(seat, type));
+  document.getElementById("btnWin").addEventListener("click", ()=>renderPlayerResult(seat, type, true));
+  document.getElementById("btnLose").addEventListener("click", ()=>renderPlayerResult(seat, type, false));
+}
+
+function renderPlayerResult(seat, type, win){
+  const me = getMe() || {name:"", sid:""};
+  const isSpyRole = isSpy(type);
+  const roleKey = isSpyRole ? "spy" : "civilian";
+  const roleName = isSpyRole ? "卧底" : "平民";
+  const score = CONFIG.playerScore[roleKey][win ? "win" : "lose"];
+  const resultTxt = win ? "胜利" : "失败";
+  const code = checksum(me.name, me.sid, score);
+  const copyText = `${me.name} ${me.sid} 作为${roleName}·${resultTxt} 获得${score}积分 ★${code}`;
+  stage.innerHTML = `
+    <div class="prompt">🎉 结算完成</div>
+    <div style="width:100%;text-align:center;line-height:1.9;font-size:14pt;">
+      <b>${escapeHtml(me.name)}</b> 作为 <b style="color:${isSpyRole?'#c2551c':'#1f8a56'}">${roleName}</b> · ${resultTxt}
+    </div>
+    <div style="font-size:15pt;color:#6b7b86;">你的积分：<b class="num" style="font-family:'Times New Roman',serif;font-size:34pt;color:#c2551c;">${score}</b> 分</div>
+    <div style="width:100%;border:2px dashed #156082;border-radius:12px;padding:14px;background:#e8f1f6;font-size:15pt;color:#0e4760;word-break:break-all;line-height:1.6;text-align:center;">
+      ${escapeHtml(me.name)} ${escapeHtml(me.sid)} 作为${roleName}·${resultTxt} 获得<b>${score}积分</b> <span style="font-family:'Times New Roman',serif;font-weight:bold;color:#c2551c;letter-spacing:2px;">★${code}</span>
+    </div>
+    <button class="smallbtn" id="btnCopy" style="background:#156082;color:#fff;border:none;font-size:16pt;padding:15px;">📋 复 制 结 果（发到学习通群）</button>
+    <div class="hint" style="text-align:left;">点击上方按钮复制文本 → 粘贴到学习通群，发给老师即可。</div>
+  `;
+  document.getElementById("btnCopy").addEventListener("click", async ()=>{
+    try{ await navigator.clipboard.writeText(copyText); toast("已复制！粘贴到学习通群即可"); }
+    catch(e){
+      const ta = document.createElement("textarea");
+      ta.value = copyText; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand("copy"); toast("已复制！"); }catch(_){ prompt("手动复制：", copyText); }
+      document.body.removeChild(ta);
+    }
   });
 }
 

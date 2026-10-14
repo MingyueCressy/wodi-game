@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>卧底投票 · 老师端核验</title>
+<style>
+  :root{
+    --blue:#156082; --blue-d:#0e4760; --blue-l:#e8f1f6;
+    --orange:#E97132; --orange-d:#c2551c; --orange-l:#fdf0e7;
+    --ink:#1f2b33; --muted:#6b7b86; --line:#d7e2ea; --ok:#1f8a56; --red:#c0392b; --red-l:#fdecea;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"FangSong","仿宋","STFangsong",serif;
+    background:linear-gradient(160deg,#f4f7fa 0%,#e6eef4 100%);
+    color:var(--ink);min-height:100vh;padding:28px 18px;
+    display:flex;flex-direction:column;align-items:center;
+  }
+  .num{font-family:"Times New Roman",Times,serif;}
+  .wrap{width:100%;max-width:720px;}
+  h1{font-size:22pt;font-weight:normal;color:var(--blue-d);letter-spacing:2px;margin-bottom:6px;text-align:center;}
+  .sub{font-size:13pt;color:var(--muted);text-align:center;margin-bottom:22px;line-height:1.6;}
+  .card{background:#fff;border-radius:18px;border:2px solid var(--line);box-shadow:0 6px 22px rgba(31,43,51,.08);padding:22px;margin-bottom:18px;}
+  textarea{
+    width:100%;min-height:150px;border:2px solid var(--line);border-radius:12px;padding:14px;
+    font-family:inherit;font-size:14pt;line-height:1.6;color:var(--ink);background:#fbfdfe;outline:none;resize:vertical;
+  }
+  textarea:focus{border-color:var(--blue);background:#fff;}
+  .btnbig{
+    width:100%;border:none;border-radius:14px;cursor:pointer;font-family:inherit;
+    font-size:16pt;color:#fff;padding:14px;background:var(--blue);margin-top:12px;transition:all .13s;letter-spacing:2px;
+  }
+  .btnbig:hover{background:var(--blue-d);}
+  .smallbtn{border:2px solid var(--line);background:#fff;border-radius:12px;cursor:pointer;font-family:inherit;font-size:13.5pt;color:var(--muted);padding:10px 16px;transition:all .13s;}
+  .smallbtn:hover{border-color:var(--blue);color:var(--blue-d);}
+  table{width:100%;border-collapse:collapse;font-size:14pt;}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:normal;font-size:12.5pt;}
+  tr.ok td.s{color:var(--ok);font-weight:bold;}
+  tr.bad td.s{color:var(--red);font-weight:bold;}
+  .totrow{display:flex;justify-content:space-between;font-size:15pt;padding:14px 8px 4px;border-top:2px solid var(--blue-l);margin-top:6px;}
+  .totrow b{font-family:"Times New Roman",serif;font-size:22pt;color:var(--orange-d);}
+  .tag-ok{background:#eaf3ec;color:var(--ok);border:1px solid #bfdcc7;border-radius:999px;padding:2px 10px;font-size:11.5pt;}
+  .tag-bad{background:var(--red-l);color:var(--red);border:1px solid #f2c1bb;border-radius:999px;padding:2px 10px;font-size:11.5pt;}
+  .hint{font-size:12.5pt;color:var(--muted);line-height:1.8;background:#f4f8fb;border-radius:12px;padding:14px 18px;}
+  .hint b{color:var(--blue-d);}
+  .fmtline{font-family:"Times New Roman",serif;font-size:12.5pt;color:var(--blue-d);background:#fff;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;word-break:break-all;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>卧底投票 · 老师端核验</h1>
+  <div class="sub">把学生发来的结果文本逐行粘贴到下面，点“核验”<br>支持一次粘贴多条（每行一条）</div>
+
+  <div class="card">
+    <textarea id="input" placeholder="杜明月 2024010101 23分 ★7F3A
+张三 2024010102 10分 ★QK9MZ2
+..."></textarea>
+    <button class="btnbig" id="btnVerify">核 验</button>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="smallbtn" id="btnSample" style="flex:1;">填入示例</button>
+      <button class="smallbtn" id="btnClear" style="flex:1;">清空</button>
+    </div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:15pt;color:var(--blue-d);">核验结果</span>
+      <span id="overview" style="font-size:13pt;color:var(--muted);"></span>
+    </div>
+    <table>
+      <thead><tr><th style="width:34%;">姓名</th><th style="width:26%;">学号</th><th style="width:16%;">分数</th><th style="width:24%;">核验</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="totrow"><span>合计有效分数（仅通过核验的）</span><b id="totalSum">0</b></div>
+  </div>
+
+  <div class="card">
+    <div class="hint">
+      <b>使用说明</b><br>
+      1. 学生发的文本格式：<b>姓名 学号 分数分 ★校验码</b><br>
+      2. 本页用与学生端完全相同的算法重算校验码，一致 = ✅ 真；不一致 = ❌ 疑似篡改分数<br>
+      3. 支持中英文空格混排、多条一起核验<br>
+      4. ⚠️ 仅防普通学生篡改；技术原理上前端密钥可见，不能防高手。
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 必须与学生端 index.html 完全一致 ===== */
+const CONFIG = {
+  SECRET: "WodiHRBP#2026@Cressy$Mingyue%7749"
+};
+const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function hashCode(str){
+  let h1 = 0x811c9dc5, h2 = 0x1000193;
+  for(let i=0;i<str.length;i++){
+    const c = str.charCodeAt(i);
+    h1 ^= c; h1 = Math.imul(h1, 0x01000193);
+    h2 = Math.imul(h2 ^ c, 0x85ebca6b);
+    h2 ^= h2 >>> 13;
+  }
+  for(let r=0;r<8;r++){
+    h1 ^= Math.imul(h1 >>> 7, 0x9e3779b1);
+    h2 ^= Math.imul(h2 >>> 11, 0xc2b2ae35);
+    h1 = (h1 << 13) | (h1 >>> 19);
+    h2 = (h2 << 17) | (h2 >>> 15);
+    h1 = Math.imul(h1 ^ h2, 0x27d4eb2f);
+    h2 = Math.imul(h2 ^ h1, 0x165667b1);
+  }
+  return [h1>>>0, h2>>>0];
+}
+function checksum(name, sid, score){
+  const seed = CONFIG.SECRET + "|" + name.trim() + "|" + String(sid).trim() + "|" + score;
+  const [a,b] = hashCode(seed);
+  let out = "";
+  let x = a, y = b;
+  for(let i=0;i<6;i++){
+    x = Math.imul(x ^ (y >>> (i+1)), 0x9e3779b1) >>> 0;
+    y = Math.imul(y ^ (x >>> (i+2)), 0x85ebca6b) >>> 0;
+    out += ALPHABET[((x ^ y) >>> 0) % ALPHABET.length];
+  }
+  return out;
+}
+/* ============================================ */
+
+/* 解析一行："姓名 学号 23分 ★7F3A" （宽松） */
+function parseLine(line){
+  const raw = line.trim();
+  if(!raw) return null;
+  // 提取校验码
+  const codeM = raw.match(/[★*]\s*([A-Za-z0-9]{4,10})\s*$/);
+  const code = codeM ? codeM[1].toUpperCase() : null;
+  let rest = raw;
+  if(codeM) rest = raw.slice(0, codeM.index);
+  // 提取分数：数字 + 分
+  const scoreM = rest.match(/(\d+)\s*分/);
+  const score = scoreM ? parseInt(scoreM[1],10) : null;
+  if(scoreM) rest = rest.replace(scoreM[0], " ");
+  // 剩余：姓名 学号
+  const parts = rest.trim().split(/\s+/).filter(Boolean);
+  let name="", sid="";
+  if(parts.length>=2){ sid = parts[parts.length-1]; name = parts.slice(0,parts.length-1).join(""); }
+  else if(parts.length===1){ name = parts[0]; }
+  return { raw, name, sid, score, code };
+}
+
+function doVerify(){
+  const lines = document.getElementById("input").value.split("\n");
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+  let okCount=0, badCount=0, sum=0, idx=0;
+  lines.forEach(line=>{
+    const p = parseLine(line);
+    if(!p) return;
+    idx++;
+    let status, cls;
+    if(p.score===null || !p.code || !p.name){
+      status = "格式异常"; cls = "bad";
+    } else {
+      const expected = checksum(p.name, p.sid, p.score);
+      if(expected === p.code){ status = `<span class="tag-ok">✅ 通过</span>`; cls="ok"; okCount++; sum += p.score; }
+      else { status = `<span class="tag-bad">❌ 不通过</span>`; cls="bad"; badCount++; }
+    }
+    const tr = document.createElement("tr");
+    tr.className = cls;
+    tr.innerHTML = `<td>${escapeHtml(p.name||"—")}</td><td class="num">${escapeHtml(p.sid||"—")}</td><td class="num s">${p.score===null?"—":p.score+"分"}</td><td>${status}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById("resultCard").style.display = "block";
+  document.getElementById("overview").innerHTML = `共 ${idx} 条 · <span style="color:var(--ok)">通过 ${okCount}</span> · <span style="color:var(--red)">不通过 ${badCount}</span>`;
+  document.getElementById("totalSum").textContent = sum;
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+document.getElementById("btnVerify").addEventListener("click", doVerify);
+document.getElementById("btnClear").addEventListener("click", ()=>{
+  document.getElementById("input").value = "";
+  document.getElementById("resultCard").style.display = "none";
+});
+document.getElementById("btnSample").addEventListener("click", ()=>{
+  // 用与学生端一致的算法生成一行真实示例
+  const name="杜明月", sid="2024010101", score=23;
+  const code = checksum(name, sid, score);
+  document.getElementById("input").value = `${name} ${sid} ${score}分 ★${code}`;
+});
+</script>
+</body>
+</html>

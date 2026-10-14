@@ -392,10 +392,8 @@ function renderResult(){
     <div class="warnline">本局卧底是 <b>2 号 与 5 号（HRBP）</b></div>
     <div class="copytxt" id="copyTxt">${escapeHtml(ST.name)} ${escapeHtml(ST.sid)} <b>${total}分</b> <span class="cb">★${code}</span></div>
     <button class="btnbig" id="btnCopy">📋 复 制 结 果（发到学习通群）</button>
-    <button class="smallbtn" id="btnShot">结果页请截图，与文本一起发给我</button>
     <div class="hint">
-      1️⃣ 点击上方按钮复制文本 → 粘贴到学习通群；<br>
-      2️⃣ 同时给本页<b>截图</b>一起发送（文字+截图双重核对）。
+      点击上方按钮复制文本 → 粘贴到学习通群，发给老师即可。
     </div>
   `;
   document.getElementById("btnCopy").addEventListener("click", async ()=>{
@@ -407,7 +405,6 @@ function renderResult(){
       document.body.removeChild(ta);
     }
   });
-  document.getElementById("btnShot").addEventListener("click", ()=>toast("请用手机截图本页"));
 }
 
 /* ---------- 启动 ---------- */

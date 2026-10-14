@@ -252,7 +252,6 @@ function renderSeatSelect(){
 }
 
 function renderRole(seat, type){
-  const spy = isSpy(type);
   stage.innerHTML = `
     <div class="rolecard">
       <div class="tag">你的座位号</div>
@@ -261,7 +260,6 @@ function renderRole(seat, type){
         <div class="wl">你的词是</div>
         <div class="word">${wordOf(type)}</div>
       </div>
-      <div class="identity ${spy?"spy":"civ"}">${spy?"你是【卧底】":"你是【平民】"}</div>
     </div>
     <div class="rowbtns">
       <button class="smallbtn" id="btnHide">收 起（我看完了）</button>

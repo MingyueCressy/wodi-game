@@ -292,10 +292,12 @@ function renderIdentity(){
   });
 }
 
-/* 3. 玩家 → 跳转选角色（带上名字学号，供结算用） */
+/* 3. 玩家 → 跳转选角色（带上名字学号 + 本局固定牌局，供结算用） */
 function renderPlayer(){
   const q = "?name=" + encodeURIComponent(ST.name) + "&sid=" + encodeURIComponent(ST.sid);
-  const url = "https://mingyuecressy.github.io/wodi-game/" + q;
+  // ⚠️ 必须带本局牌局编码，否则卧底页会退化为随机发牌
+  const deck = "#deck=1:civ,2:spy,3:civ,4:civ,5:spy,6:civ,7:civ,8:civ";
+  const url = "https://mingyuecressy.github.io/wodi-game/" + q + deck;
   stage.innerHTML = `
     <div class="prompt">正在为你跳转到角色抽取页…</div>
     <div class="hint">
